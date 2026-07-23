@@ -6,7 +6,13 @@
 // Variables, not in a committed .env file.
 
 const API_KEY = process.env.GEMINI_API_KEY;
-const MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+// Flash-Lite handles structured JSON well and is less capacity-starved than
+// the newest flagship Flash models. Override with GEMINI_MODEL if needed.
+const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
+const FALLBACK_MODELS = (process.env.GEMINI_FALLBACK_MODELS || 'gemini-3.5-flash-lite,gemini-3.5-flash')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 const LESSON_SCHEMA = {
   type: 'object',
@@ -58,6 +64,46 @@ const LESSON_SCHEMA = {
   required: ['title', 'warmUp', 'vocabulary', 'sentenceFrames', 'speakingQuestions', 'activity', 'reviewSentences'],
 };
 
+function modelCandidates() {
+  return [...new Set([PRIMARY_MODEL, ...FALLBACK_MODELS])];
+}
+
+function isCapacityError(status, message) {
+  const msg = String(message || '').toLowerCase();
+  return (
+    status === 429 ||
+    status === 503 ||
+    msg.includes('high demand') ||
+    msg.includes('try again later') ||
+    msg.includes('resource exhausted') ||
+    msg.includes('unavailable') ||
+    msg.includes('overloaded')
+  );
+}
+
+async function generateWithModel(model, prompt) {
+  const resp = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': API_KEY,
+      },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: LESSON_SCHEMA,
+        },
+      }),
+    }
+  );
+
+  const data = await resp.json();
+  return { resp, data };
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -88,43 +134,40 @@ module.exports = async (req, res) => {
 Generate exactly: ${counts.vocab} vocabulary items, 4 sentenceFrames, ${counts.questions} speakingQuestions, 4 activity templates, 3 reviewSentences. All content appropriate for ${safeLevel} ESL learners. Sentence frames and activity templates should contain a literal "___" blank.`;
 
   try {
-    const resp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': API_KEY,
-        },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            responseSchema: LESSON_SCHEMA,
-          },
-        }),
+    const models = modelCandidates();
+    let lastError = null;
+
+    for (const model of models) {
+      const { resp, data } = await generateWithModel(model, prompt);
+      if (!resp.ok) {
+        const message = data?.error?.message || `Gemini API error (${resp.status})`;
+        lastError = { status: resp.status, message };
+        if (isCapacityError(resp.status, message) && model !== models[models.length - 1]) {
+          console.warn(`Model ${model} busy (${resp.status}); trying fallback…`);
+          continue;
+        }
+        return res.status(resp.status).json({ error: message });
       }
-    );
 
-    const data = await resp.json();
-    if (!resp.ok) {
-      return res.status(resp.status).json({ error: data?.error?.message || `Gemini API error (${resp.status})` });
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) {
+        const blockReason = data.promptFeedback?.blockReason;
+        return res.status(502).json({ error: blockReason ? `Blocked by Gemini: ${blockReason}` : 'Empty response from model.' });
+      }
+
+      let lesson;
+      try {
+        lesson = JSON.parse(text);
+      } catch (e) {
+        return res.status(502).json({ error: 'Model did not return valid JSON.' });
+      }
+
+      return res.status(200).json({ lesson, level: safeLevel, duration: safeDuration });
     }
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) {
-      const blockReason = data.promptFeedback?.blockReason;
-      return res.status(502).json({ error: blockReason ? `Blocked by Gemini: ${blockReason}` : 'Empty response from model.' });
-    }
-
-    let lesson;
-    try {
-      lesson = JSON.parse(text);
-    } catch (e) {
-      return res.status(502).json({ error: 'Model did not return valid JSON.' });
-    }
-
-    res.status(200).json({ lesson, level: safeLevel, duration: safeDuration });
+    return res.status(lastError?.status || 503).json({
+      error: lastError?.message || 'All Gemini models are currently unavailable. Try again shortly.',
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to reach Gemini API. Check function logs.' });
