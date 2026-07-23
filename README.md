@@ -79,6 +79,7 @@ Then open http://localhost:3000.
 - Default model is `gemini-3.1-flash-lite`, set via `GEMINI_MODEL`. If a
   model is capacity-throttled, the API automatically tries one fallback from
   `GEMINI_FALLBACK_MODELS`.
-- Uses `jsPDF 2.5.2` from cdnjs — no build step needed for the frontend.
+- Uses `jsPDF 2.5.2` (self-hosted at `public/lib/jspdf.umd.min.js`) — no
+  build step and no external CDN required for the frontend.
 - Emoji from the Gemini response are stripped in the PDF (jsPDF's built-in
   helvetica font doesn't render them), but the lesson content is unchanged.

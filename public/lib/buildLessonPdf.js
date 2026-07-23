@@ -294,9 +294,16 @@ function pageWrapUp(doc, lesson) {
 // ── Main entry point ────────────────────────────────────────────────
 
 async function buildLessonPdf(lesson, meta) {
-  if (typeof jspdf === 'undefined') throw new Error('jsPDF failed to load.');
+  const jspdfNs = (typeof jspdf !== 'undefined' && jspdf)
+    || (typeof window !== 'undefined' && window.jspdf)
+    || null;
+  const jsPDF = jspdfNs?.jsPDF
+    || (typeof window !== 'undefined' && window.jsPDF)
+    || null;
+  if (!jsPDF) {
+    throw new Error('jsPDF failed to load. Refresh the page and try again.');
+  }
 
-  const { jsPDF } = jspdf;
   const doc = new jsPDF({
     orientation: 'landscape',
     unit: 'mm',
