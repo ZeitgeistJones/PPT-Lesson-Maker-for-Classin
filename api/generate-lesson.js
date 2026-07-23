@@ -9,7 +9,10 @@ const API_KEY = process.env.GEMINI_API_KEY;
 // Flash-Lite handles structured JSON well and is less capacity-starved than
 // the newest flagship Flash models. Override with GEMINI_MODEL if needed.
 const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
-const FALLBACK_MODELS = (process.env.GEMINI_FALLBACK_MODELS || 'gemini-3.5-flash-lite,gemini-3.5-flash')
+// Keep the fallback list short — each attempt can take several seconds and
+// Vercel will kill the function (returning plain text, not JSON) if we exceed
+// maxDuration while trying too many models.
+const FALLBACK_MODELS = (process.env.GEMINI_FALLBACK_MODELS || 'gemini-3.5-flash-lite')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
@@ -65,7 +68,7 @@ const LESSON_SCHEMA = {
 };
 
 function modelCandidates() {
-  return [...new Set([PRIMARY_MODEL, ...FALLBACK_MODELS])];
+  return [...new Set([PRIMARY_MODEL, ...FALLBACK_MODELS])].slice(0, 2);
 }
 
 function isCapacityError(status, message) {
@@ -100,7 +103,13 @@ async function generateWithModel(model, prompt) {
     }
   );
 
-  const data = await resp.json();
+  const raw = await resp.text();
+  let data = {};
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    data = { error: { message: raw.slice(0, 300) || `Non-JSON response from Gemini (${resp.status})` } };
+  }
   return { resp, data };
 }
 

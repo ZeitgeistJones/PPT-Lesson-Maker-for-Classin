@@ -57,9 +57,8 @@ answering; it just calls `fetch('/api/generate-lesson', ...)`.
    **Project Settings → Environment Variables** and add:
    - `GEMINI_API_KEY` — your key from https://aistudio.google.com/apikey
    - `GEMINI_MODEL` — optional, defaults to `gemini-3.1-flash-lite`
-   - `GEMINI_FALLBACK_MODELS` — optional comma-separated list (defaults to
-     `gemini-3.5-flash-lite,gemini-3.5-flash`) tried automatically when the
-     primary model returns high-demand / 429 / 503
+   - `GEMINI_FALLBACK_MODELS` — optional (defaults to `gemini-3.5-flash-lite`);
+     one fallback is tried if the primary returns high-demand / 429 / 503
 4. Deploy (or redeploy, if you added the env vars after the first deploy —
    env var changes require a redeploy to take effect).
 
@@ -97,7 +96,7 @@ env vars first with `vercel env pull .env.local`.
 
 - Default model is `gemini-3.1-flash-lite`, set via `GEMINI_MODEL`. Check
   https://ai.google.dev/gemini-api/docs/models for the current lineup. If a
-  model is capacity-throttled, the API automatically tries
+  model is capacity-throttled, the API automatically tries one model from
   `GEMINI_FALLBACK_MODELS`.
 - Uses `pptxgenjs@3.12.0` and `jszip@3.10.1` from cdnjs — no build step needed
   for the frontend either.
