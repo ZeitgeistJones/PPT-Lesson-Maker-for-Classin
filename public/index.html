@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ClassIn Interactive Lesson Builder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgenjs.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #f8f9fb; }
+  .app { max-width: 720px; margin: 0 auto; padding: 16px; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #4f46e5, #7c3aed); padding: 24px 20px 18px; border-radius: 16px; color: #fff; margin-bottom: 20px; }
+  .header-sub { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.7; margin-bottom: 2px; }
+  .header-title { font-size: 22px; font-weight: 800; }
+  .card { background: #fff; border-radius: 14px; padding: 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 14px; }
+  .label { font-size: 13px; font-weight: 700; color: #475569; margin-bottom: 8px; display: block; }
+  .topic-input { width: 100%; padding: 14px 16px; border-radius: 10px; border: 2px solid #e2e8f0; font-size: 16px; color: #1e293b; outline: none; font-family: inherit; }
+  .topic-input:focus { border-color: #6366f1; }
+  .topic-input::placeholder { color: #94a3b8; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .opt-btn { flex: 1; min-width: 0; padding: 12px 8px; border-radius: 10px; border: 2px solid #e2e8f0; background: #fff; color: #475569; font-size: 14px; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.15s; font-family: inherit; }
+  .opt-btn.active { border-color: #6366f1; background: #eef2ff; color: #4338ca; }
+  .opt-btn .sub { font-size: 11px; font-weight: 400; opacity: 0.6; display: block; margin-top: 2px; }
+  .generate-btn { width: 100%; padding: 16px; border-radius: 12px; border: none; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; font-size: 17px; font-weight: 700; cursor: pointer; font-family: inherit; letter-spacing: 0.3px; transition: opacity 0.15s; }
+  .generate-btn:disabled { background: #e2e8f0; color: #94a3b8; cursor: default; }
+  .generate-btn:not(:disabled):hover { opacity: 0.92; }
+  .loading { text-align: center; padding: 60px 20px; }
+  .spinner { display: inline-block; width: 44px; height: 44px; border: 4px solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { margin-top: 18px; font-size: 16px; color: #64748b; font-weight: 500; }
+  .preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+  .preview-title { font-size: 20px; font-weight: 800; color: #1e293b; }
+  .preview-meta { font-size: 13px; color: #94a3b8; }
+  .slide-preview { background: #f1f5f9; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; border-left: 4px solid #6366f1; }
+  .slide-num { font-size: 11px; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .slide-title { font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+  .slide-content { font-size: 13px; color: #64748b; line-height: 1.5; }
+  .slide-content em { color: #4338ca; font-style: normal; font-weight: 600; }
+  .action-row { display: flex; gap: 10px; margin-top: 18px; }
+  .download-btn { flex: 1; padding: 16px; border-radius: 12px; border: none; background: linear-gradient(135deg, #10b981, #059669); color: #fff; font-size: 17px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .download-btn:hover { opacity: 0.92; }
+  .new-btn { padding: 16px 24px; border-radius: 12px; border: 2px solid #e2e8f0; background: #fff; color: #475569; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .error { background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 12px 16px; color: #dc2626; font-size: 14px; margin-bottom: 14px; }
+  .notice { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px 16px; color: #92400e; font-size: 13px; margin-bottom: 14px; }
+  .info { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 12px 16px; color: #1e40af; font-size: 13px; margin-bottom: 14px; line-height: 1.5; }
+  .slide-preview.blue { border-left-color: #3b82f6; }
+  .slide-preview.coral { border-left-color: #f97066; }
+  .slide-preview.green { border-left-color: #10b981; }
+  .slide-preview.yellow { border-left-color: #f59e0b; }
+  .slide-preview.purple { border-left-color: #8b5cf6; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div id="screen-input">
+    <div class="header">
+      <div class="header-sub">ESL Lesson Generator</div>
+      <div class="header-title">ClassIn Interactive Builder ✨</div>
+    </div>
+    <div class="info">
+      This makes a real, downloadable <strong>.pptx</strong> with clickable menu navigation, click-to-reveal
+      answers, and fade transitions baked in. ClassIn's PPT player needs to support in-file hyperlinks for the
+      clicking to work — test one deck in your ClassIn classroom before relying on it for a live lesson.
+    </div>
+    <div class="card">
+      <label class="label">Topic or grammar point</label>
+      <input class="topic-input" id="topic" type="text" placeholder='e.g. "daily routines", "past tense verbs", "badminton"' />
+    </div>
+    <div class="card">
+      <label class="label">Student Level</label>
+      <div class="btn-row" id="level-row">
+        <button class="opt-btn" data-val="Beginner" onclick="pickLevel(this)">Beginner<span class="sub">A1–A2</span></button>
+        <button class="opt-btn active" data-val="Intermediate" onclick="pickLevel(this)">Intermediate<span class="sub">B1–B2</span></button>
+        <button class="opt-btn" data-val="Advanced" onclick="pickLevel(this)">Advanced<span class="sub">C1–C2</span></button>
+      </div>
+    </div>
+    <div class="card">
+      <label class="label">Lesson Focus (optional)</label>
+      <input class="topic-input" id="focus" type="text" placeholder='e.g. "complete sentences", "adjectives", "speaking"' style="font-size:14px; padding:12px 14px;" />
+    </div>
+    <div class="card">
+      <label class="label">Class Length</label>
+      <div class="btn-row" id="duration-row">
+        <button class="opt-btn" data-val="15" onclick="pickDuration(this)">15 min</button>
+        <button class="opt-btn active" data-val="25" onclick="pickDuration(this)">25 min</button>
+        <button class="opt-btn" data-val="40" onclick="pickDuration(this)">40 min</button>
+      </div>
+    </div>
+    <div id="error-box" class="error" style="display:none;"></div>
+    <button class="generate-btn" id="gen-btn" onclick="generate()">Generate Interactive PPTX ✨</button>
+  </div>
+
+  <div id="screen-loading" style="display:none;">
+    <div class="header">
+      <div class="header-sub">ESL Lesson Generator</div>
+      <div class="header-title">ClassIn Interactive Builder ✨</div>
+    </div>
+    <div class="loading">
+      <div class="spinner"></div>
+      <div class="loading-text" id="loading-msg">Designing your lesson…</div>
+    </div>
+  </div>
+
+  <div id="screen-preview" style="display:none;">
+    <div class="header">
+      <div class="header-sub">ESL Lesson Generator</div>
+      <div class="header-title">ClassIn Interactive Builder ✨</div>
+    </div>
+    <div id="notice-box" class="notice" style="display:none;"></div>
+    <div class="preview-header">
+      <div>
+        <div class="preview-title" id="preview-title"></div>
+        <div class="preview-meta" id="preview-meta"></div>
+      </div>
+    </div>
+    <div id="slides-preview"></div>
+    <div class="action-row">
+      <button class="download-btn" onclick="downloadPPTX()">⬇ Download Interactive PPTX</button>
+      <button class="new-btn" onclick="reset()">New</button>
+    </div>
+  </div>
+</div>
+
+<script src="lib/buildInteractivePptx.js"></script>
+<script>
+let state = { level: 'Intermediate', duration: '25', lessonData: null };
+
+function pickLevel(btn) {
+  document.querySelectorAll('#level-row .opt-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.level = btn.dataset.val;
+}
+function pickDuration(btn) {
+  document.querySelectorAll('#duration-row .opt-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.duration = btn.dataset.val;
+}
+function showScreen(name) {
+  ['input', 'loading', 'preview'].forEach(s => {
+    document.getElementById('screen-' + s).style.display = s === name ? 'block' : 'none';
+  });
+}
+
+const loadingMsgs = ['Designing your lesson…', 'Picking vocabulary…', 'Writing sentence frames…', 'Planning the click-paths…', 'Building slides…'];
+let loadingInterval;
+
+async function generate() {
+  const topic = document.getElementById('topic').value.trim();
+  const errBox = document.getElementById('error-box');
+  errBox.style.display = 'none';
+  if (!topic) return;
+
+  showScreen('loading');
+  let msgIdx = 0;
+  loadingInterval = setInterval(() => {
+    msgIdx = (msgIdx + 1) % loadingMsgs.length;
+    document.getElementById('loading-msg').textContent = loadingMsgs[msgIdx];
+  }, 2200);
+
+  const focus = document.getElementById('focus').value.trim();
+
+  try {
+    const resp = await fetch('/api/generate-lesson', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, level: state.level, focus, duration: state.duration }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || `Server error (${resp.status})`);
+
+    state.lessonData = data.lesson;
+    state.level = data.level;
+    state.duration = data.duration;
+    clearInterval(loadingInterval);
+    showPreview(data.lesson);
+  } catch (e) {
+    clearInterval(loadingInterval);
+    showScreen('input');
+    errBox.textContent = e.message || 'Something went wrong generating the lesson.';
+    errBox.style.display = 'block';
+  }
+}
+
+function showPreview(d) {
+  document.getElementById('preview-title').textContent = d.title;
+  document.getElementById('preview-meta').textContent = `${state.level} · ${state.duration} min · click-to-reveal + menu nav`;
+  document.getElementById('notice-box').style.display = 'none';
+
+  const c = document.getElementById('slides-preview');
+  c.innerHTML = '';
+  [
+    { title: d.title, content: 'Title slide → Start button', cls: 'blue' },
+    { title: 'Menu', content: 'Branching navigation hub — jumps to any section', cls: 'purple' },
+    { title: 'Warm-Up', content: `"${d.warmUp.question}"<br>Tap to reveal → <em>${d.warmUp.sampleAnswer}</em>`, cls: 'coral' },
+    { title: 'New Words', content: d.vocabulary.map(v => `${v.emoji} <em>${v.word}</em>`).join(' &nbsp; ') + '<br>Tap to reveal example sentences', cls: 'yellow' },
+    { title: 'Sentence Frames', content: d.sentenceFrames.map(f => `<em>${f}</em>`).join('<br>'), cls: 'purple' },
+    { title: "Let's Talk!", content: d.speakingQuestions.map(q => `❓ ${q.question} → tap to reveal answer`).join('<br>'), cls: 'green' },
+    { title: d.activity.title, content: `${d.activity.prompt}<br>${d.activity.templates.map(t => `<em>${t}</em>`).join('<br>')}`, cls: 'coral' },
+    { title: 'Great Job!', content: 'Review: ' + d.reviewSentences.map(s => `<em>${s}</em>`).join(' · '), cls: 'blue' },
+  ].forEach((s, i) => {
+    const div = document.createElement('div');
+    div.className = `slide-preview ${s.cls}`;
+    div.innerHTML = `<div class="slide-num">Section ${i + 1}</div><div class="slide-title">${s.title}</div><div class="slide-content">${s.content}</div>`;
+    c.appendChild(div);
+  });
+
+  showScreen('preview');
+}
+
+async function downloadPPTX() {
+  const d = state.lessonData;
+  if (!d) return;
+  const btn = document.querySelector('.download-btn');
+  const original = btn.textContent;
+  btn.textContent = 'Building file…';
+  btn.disabled = true;
+  try {
+    await buildInteractivePptx(d, { level: state.level, duration: state.duration });
+  } catch (e) {
+    alert('Could not build the PPTX: ' + e.message);
+  } finally {
+    btn.textContent = original;
+    btn.disabled = false;
+  }
+}
+
+function reset() {
+  state.lessonData = null;
+  document.getElementById('topic').value = '';
+  document.getElementById('focus').value = '';
+  showScreen('input');
+}
+
+document.getElementById('topic').addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
+</script>
+</body>
+</html>
