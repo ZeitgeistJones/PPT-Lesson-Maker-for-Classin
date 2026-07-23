@@ -2,11 +2,8 @@
 // Vercel Serverless Function. Same logic as the old Express route in
 // server.js, just in Vercel's (req, res) handler shape. Vercel's Node
 // runtime has global fetch built in, so node-fetch/express are not needed.
-// This is deployed automatically because it lives in /api — Vercel turns
-// every file in that folder into its own endpoint (this one becomes
-// POST /api/generate-lesson). The GEMINI_API_KEY env var must be set in
-// the Vercel Project Settings (Settings -> Environment Variables), not in
-// a committed .env file.
+// GEMINI_API_KEY must be set in Vercel Project Settings -> Environment
+// Variables, not in a committed .env file.
 
 const API_KEY = process.env.GEMINI_API_KEY;
 const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
@@ -71,7 +68,6 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: 'Server is missing GEMINI_API_KEY. Add it in Vercel Project Settings -> Environment Variables, then redeploy.' });
   }
 
-  // Vercel parses JSON bodies into req.body automatically for Node functions.
   const { topic, level, focus, duration } = req.body || {};
   if (!topic || typeof topic !== 'string') {
     return res.status(400).json({ error: 'Missing "topic" in request body.' });
