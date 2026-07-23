@@ -13,60 +13,86 @@ app uses that in two ways:
 - **Menu navigation** — a hub slide with buttons that jump to any section, and
   a "🏠 Menu" button on every slide to come back.
 - **Click-to-reveal** — each warm-up/vocab/speaking prompt is actually *two*
-  slides (a "prompt" and an "answer"), linked by a button. Clicking jumps to
-  the answer slide instead of toggling something on the same slide, since PPTX
-  has no native click-to-show-hidden-element behavior we can script safely.
-- **Transitions** — pptxgenjs (the library that builds the file) has no
-  transition API, so after it generates the `.pptx` we unzip it (it's just a
-  zip of XML), inject a native `<p:transition>` fade on every slide's XML, and
-  re-zip. This is real PowerPoint transition metadata, not a workaround.
+  slides (a "prompt" and an "answer"), linked by a button.
+- **Transitions** — pptxgenjs has no transition API, so after it generates the
+  `.pptx` we unzip it, inject a native `<p:transition>` fade on every slide's
+  XML, and re-zip.
 
-**Important caveat:** this all depends on ClassIn's PPT player honoring
-in-file hyperlinks and transitions when you upload a `.pptx`. Some LMS/webinar
-PPT viewers flatten slides to images and strip interactivity. Test one
-generated deck in an actual ClassIn classroom before trusting it in a live
-lesson — if ClassIn's player doesn't support clicking hyperlinked shapes,
-the deck will still look right but won't be clickable, and you'd want to
-fall back to manual slide-forward instead.
+**Important caveat:** this depends on ClassIn's PPT player honoring in-file
+hyperlinks and transitions when you upload a `.pptx`. Test one generated deck
+in an actual ClassIn classroom before relying on it in a live lesson.
 
-## Setup
+## Project structure
+
+```
+public/                     <- served statically (by Express locally, by Vercel in prod)
+  index.html
+  lib/buildInteractivePptx.js
+api/
+  generate-lesson.js        <- Vercel Serverless Function: POST /api/generate-lesson
+server.js                   <- Express server, LOCAL DEV ONLY (npm start)
+vercel.json
+package.json
+.env.example
+```
+
+The app has two possible "backends" for the same `/api/generate-lesson`
+route, so it works the same way in both places:
+- **Locally:** `server.js` (Express) serves it.
+- **On Vercel:** `api/generate-lesson.js` serves it as a Serverless Function,
+  and Vercel serves everything in `public/` as static files automatically —
+  no build step needed.
+
+The frontend (`public/index.html`) doesn't know or care which one is
+answering; it just calls `fetch('/api/generate-lesson', ...)`.
+
+## Deploy to Vercel
+
+1. Push this project to a GitHub repo (or use the Vercel CLI directly from
+   this folder).
+2. In the [Vercel dashboard](https://vercel.com/new), import the repo.
+   Framework preset: **Other** (no build command / output directory needed —
+   leave those blank, Vercel auto-detects `public/` + `api/`).
+3. Before or after the first deploy, go to
+   **Project Settings → Environment Variables** and add:
+   - `GEMINI_API_KEY` — your key from https://aistudio.google.com/apikey
+   - `GEMINI_MODEL` — optional, defaults to `gemini-2.5-flash`
+4. Deploy (or redeploy, if you added the env vars after the first deploy —
+   env var changes require a redeploy to take effect).
+
+Or via CLI from this folder:
+
+```bash
+npm i -g vercel
+vercel link
+vercel env add GEMINI_API_KEY
+vercel --prod
+```
+
+## Local development (optional)
 
 ```bash
 npm install
 cp .env.example .env
-# edit .env and paste your Gemini API key (get one at https://aistudio.google.com/apikey)
+# edit .env and paste your Gemini API key
 npm start
 ```
 
-Then open http://localhost:3000
-
-## How it works
-
-- `server.js` — Express server. Holds your Gemini API key server-side and
-  proxies lesson-content requests to `POST /api/generate-lesson`, so the key
-  never reaches the browser. Uses Gemini's `responseSchema` structured-output
-  mode, so the model is constrained to valid JSON matching the lesson shape —
-  no markdown-fence-stripping needed.
-- `public/index.html` — the UI (topic, level, focus, duration → generate →
-  preview → download).
-- `public/lib/buildInteractivePptx.js` — the deck builder. Plans every slide's
-  index up front (so hyperlinks can point forward and backward), builds the
-  deck with `pptxgenjs`, then patches in transitions with `JSZip`.
+Then open http://localhost:3000. You can also run `vercel dev` instead, which
+uses `api/generate-lesson.js` + `public/` the same way production does — pull
+env vars first with `vercel env pull .env.local`.
 
 ## Extending it
 
-- **Add a section**: add a slide-index to `planSlides()`, build the slide(s)
-  in `buildInteractivePptx()`, and add a menu button pointing at it.
-- **Change the transition**: swap `<p:fade/>` in `buildInteractivePptx.js` for
-  `<p:push dir="l"/>`, `<p:wipe/>`, `<p:cut/>`, etc. — these are standard OOXML
-  transition elements.
-- **Deploy it**: any Node host works (Render, Railway, Fly.io, a VPS). Just set
-  `GEMINI_API_KEY` (and optionally `GEMINI_MODEL`) as environment variables
-  there instead of `.env`.
+- **Add a section**: add a slide-index to `planSlides()` in
+  `public/lib/buildInteractivePptx.js`, build the slide(s), and add a menu
+  button pointing at it.
+- **Change the transition**: swap `<p:fade/>` for `<p:push dir="l"/>`,
+  `<p:wipe/>`, `<p:cut/>`, etc. — standard OOXML transition elements.
 
 ## Notes
 
-- Default model is `gemini-2.5-flash`, set via `GEMINI_MODEL` in `.env`. Check
-  https://ai.google.dev/gemini-api/docs/models for the current lineup if you
-  want to switch models.
-- Uses `pptxgenjs@3.12.0` and `jszip@3.10.1` from cdnjs — no build step needed.
+- Default model is `gemini-2.5-flash`, set via `GEMINI_MODEL`. Check
+  https://ai.google.dev/gemini-api/docs/models for the current lineup.
+- Uses `pptxgenjs@3.12.0` and `jszip@3.10.1` from cdnjs — no build step needed
+  for the frontend either.

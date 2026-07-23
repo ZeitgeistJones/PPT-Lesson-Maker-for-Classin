@@ -1,22 +1,15 @@
-// server.js
-// Optional: only used for LOCAL development (`npm start`). When deployed to
-// Vercel, this file is ignored — Vercel runs api/generate-lesson.js as a
-// Serverless Function instead and serves public/ statically. Kept here so
-// you can still `npm start` and test on http://localhost:3000 without Vercel.
-require('dotenv').config();
-const express = require('express');
+// api/generate-lesson.js
+// Vercel Serverless Function. Same logic as the old Express route in
+// server.js, just in Vercel's (req, res) handler shape. Vercel's Node
+// runtime has global fetch built in, so node-fetch/express are not needed.
+// This is deployed automatically because it lives in /api — Vercel turns
+// every file in that folder into its own endpoint (this one becomes
+// POST /api/generate-lesson). The GEMINI_API_KEY env var must be set in
+// the Vercel Project Settings (Settings -> Environment Variables), not in
+// a committed .env file.
 
-const app = express();
-const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.GEMINI_API_KEY;
 const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-
-app.use(express.json());
-app.use(express.static('public'));
-
-if (!API_KEY) {
-  console.warn('⚠️  GEMINI_API_KEY is not set. /api/generate-lesson will return an error until you set it in .env');
-}
 
 const LESSON_SCHEMA = {
   type: 'object',
@@ -68,11 +61,17 @@ const LESSON_SCHEMA = {
   required: ['title', 'warmUp', 'vocabulary', 'sentenceFrames', 'speakingQuestions', 'activity', 'reviewSentences'],
 };
 
-app.post('/api/generate-lesson', async (req, res) => {
-  if (!API_KEY) {
-    return res.status(500).json({ error: 'Server is missing GEMINI_API_KEY. Add it to your .env file and restart.' });
+module.exports = async (req, res) => {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ error: 'Method not allowed. Use POST.' });
   }
 
+  if (!API_KEY) {
+    return res.status(500).json({ error: 'Server is missing GEMINI_API_KEY. Add it in Vercel Project Settings -> Environment Variables, then redeploy.' });
+  }
+
+  // Vercel parses JSON bodies into req.body automatically for Node functions.
   const { topic, level, focus, duration } = req.body || {};
   if (!topic || typeof topic !== 'string') {
     return res.status(400).json({ error: 'Missing "topic" in request body.' });
@@ -129,13 +128,9 @@ Generate exactly: ${counts.vocab} vocabulary items, 4 sentenceFrames, ${counts.q
       return res.status(502).json({ error: 'Model did not return valid JSON.' });
     }
 
-    res.json({ lesson, level: safeLevel, duration: safeDuration });
+    res.status(200).json({ lesson, level: safeLevel, duration: safeDuration });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Failed to reach Gemini API. Check server network/logs.' });
+    res.status(500).json({ error: 'Failed to reach Gemini API. Check function logs.' });
   }
-});
-
-app.listen(PORT, () => {
-  console.log(`ClassIn Lesson Builder running at http://localhost:${PORT}`);
-});
+};
