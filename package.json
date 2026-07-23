@@ -1,7 +1,7 @@
 {
   "name": "classin-lesson-builder",
-  "version": "1.0.0",
-  "description": "Generates interactive ESL lesson PPTX decks (click-to-reveal, branching menu navigation, fade transitions) for use in ClassIn.",
+  "version": "2.0.0",
+  "description": "Generates slide-style ESL lesson PDFs for use in ClassIn.",
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",

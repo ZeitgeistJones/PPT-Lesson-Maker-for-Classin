@@ -3,9 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ClassIn Interactive Lesson Builder</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgenjs.bundle.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<title>ClassIn Lesson Builder — PDF</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #f8f9fb; }
@@ -42,7 +41,6 @@
   .download-btn:hover { opacity: 0.92; }
   .new-btn { padding: 16px 24px; border-radius: 12px; border: 2px solid #e2e8f0; background: #fff; color: #475569; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; }
   .error { background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 12px 16px; color: #dc2626; font-size: 14px; margin-bottom: 14px; }
-  .notice { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px 16px; color: #92400e; font-size: 13px; margin-bottom: 14px; }
   .info { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 12px 16px; color: #1e40af; font-size: 13px; margin-bottom: 14px; line-height: 1.5; }
   .slide-preview.blue { border-left-color: #3b82f6; }
   .slide-preview.coral { border-left-color: #f97066; }
@@ -56,12 +54,12 @@
   <div id="screen-input">
     <div class="header">
       <div class="header-sub">ESL Lesson Generator</div>
-      <div class="header-title">ClassIn Interactive Builder ✨</div>
+      <div class="header-title">ClassIn Lesson Builder (PDF)</div>
     </div>
     <div class="info">
-      This makes a real, downloadable <strong>.pptx</strong> with clickable menu navigation, click-to-reveal
-      answers, and fade transitions baked in. ClassIn's PPT player needs to support in-file hyperlinks for the
-      clicking to work — test one deck in your ClassIn classroom before relying on it for a live lesson.
+      Type a topic and get a downloadable <strong>.pdf</strong> lesson with slide-style pages —
+      title, warm-up, vocabulary, sentence frames, speaking questions, activity, and wrap-up.
+      Open it in ClassIn's document viewer and advance pages to pace the lesson.
     </div>
     <div class="card">
       <label class="label">Topic or grammar point</label>
@@ -88,13 +86,13 @@
       </div>
     </div>
     <div id="error-box" class="error" style="display:none;"></div>
-    <button class="generate-btn" id="gen-btn" onclick="generate()">Generate Interactive PPTX ✨</button>
+    <button class="generate-btn" id="gen-btn" onclick="generate()">Generate Lesson PDF</button>
   </div>
 
   <div id="screen-loading" style="display:none;">
     <div class="header">
       <div class="header-sub">ESL Lesson Generator</div>
-      <div class="header-title">ClassIn Interactive Builder ✨</div>
+      <div class="header-title">ClassIn Lesson Builder (PDF)</div>
     </div>
     <div class="loading">
       <div class="spinner"></div>
@@ -105,9 +103,8 @@
   <div id="screen-preview" style="display:none;">
     <div class="header">
       <div class="header-sub">ESL Lesson Generator</div>
-      <div class="header-title">ClassIn Interactive Builder ✨</div>
+      <div class="header-title">ClassIn Lesson Builder (PDF)</div>
     </div>
-    <div id="notice-box" class="notice" style="display:none;"></div>
     <div class="preview-header">
       <div>
         <div class="preview-title" id="preview-title"></div>
@@ -116,13 +113,13 @@
     </div>
     <div id="slides-preview"></div>
     <div class="action-row">
-      <button class="download-btn" onclick="downloadPPTX()">⬇ Download Interactive PPTX</button>
+      <button class="download-btn" onclick="downloadPDF()">Download Lesson PDF</button>
       <button class="new-btn" onclick="reset()">New</button>
     </div>
   </div>
 </div>
 
-<script src="lib/buildInteractivePptx.js"></script>
+<script src="lib/buildLessonPdf.js"></script>
 <script>
 let state = { level: 'Intermediate', duration: '25', lessonData: null };
 
@@ -142,7 +139,7 @@ function showScreen(name) {
   });
 }
 
-const loadingMsgs = ['Designing your lesson…', 'Picking vocabulary…', 'Writing sentence frames…', 'Planning the click-paths…', 'Building slides…'];
+const loadingMsgs = ['Designing your lesson…', 'Picking vocabulary…', 'Writing sentence frames…', 'Laying out pages…', 'Almost ready…'];
 let loadingInterval;
 
 async function generate() {
@@ -190,41 +187,40 @@ async function generate() {
 
 function showPreview(d) {
   document.getElementById('preview-title').textContent = d.title;
-  document.getElementById('preview-meta').textContent = `${state.level} · ${state.duration} min · click-to-reveal + menu nav`;
-  document.getElementById('notice-box').style.display = 'none';
+  document.getElementById('preview-meta').textContent = `${state.level} · ${state.duration} min · ${d.speakingQuestions.length + 7} pages`;
 
   const c = document.getElementById('slides-preview');
   c.innerHTML = '';
   [
-    { title: d.title, content: 'Title slide → Start button', cls: 'blue' },
-    { title: 'Menu', content: 'Branching navigation hub — jumps to any section', cls: 'purple' },
-    { title: 'Warm-Up', content: `"${d.warmUp.question}"<br>Tap to reveal → <em>${d.warmUp.sampleAnswer}</em>`, cls: 'coral' },
-    { title: 'New Words', content: d.vocabulary.map(v => `${v.emoji} <em>${v.word}</em>`).join(' &nbsp; ') + '<br>Tap to reveal example sentences', cls: 'yellow' },
-    { title: 'Sentence Frames', content: d.sentenceFrames.map(f => `<em>${f}</em>`).join('<br>'), cls: 'purple' },
-    { title: "Let's Talk!", content: d.speakingQuestions.map(q => `❓ ${q.question} → tap to reveal answer`).join('<br>'), cls: 'green' },
+    { title: d.title, content: 'Title page', cls: 'blue' },
+    { title: 'Warm-Up', content: `"${d.warmUp.question}" — Sample: ${d.warmUp.sampleAnswer}`, cls: 'coral' },
+    { title: 'New Words', content: d.vocabulary.map(v => `${v.emoji} <em>${v.word}</em>`).join(' &nbsp; '), cls: 'purple' },
+    { title: 'New Words — In Sentences', content: d.vocabulary.map(v => `<em>${v.word}</em>: ${v.sentence}`).join('<br>'), cls: 'purple' },
+    { title: 'Sentence Frames', content: d.sentenceFrames.map(f => `<em>${f}</em>`).join('<br>'), cls: 'yellow' },
+    { title: "Let's Talk!", content: d.speakingQuestions.map((q, i) => `${i + 1}. ${q.question}`).join('<br>'), cls: 'green' },
     { title: d.activity.title, content: `${d.activity.prompt}<br>${d.activity.templates.map(t => `<em>${t}</em>`).join('<br>')}`, cls: 'coral' },
     { title: 'Great Job!', content: 'Review: ' + d.reviewSentences.map(s => `<em>${s}</em>`).join(' · '), cls: 'blue' },
   ].forEach((s, i) => {
     const div = document.createElement('div');
     div.className = `slide-preview ${s.cls}`;
-    div.innerHTML = `<div class="slide-num">Section ${i + 1}</div><div class="slide-title">${s.title}</div><div class="slide-content">${s.content}</div>`;
+    div.innerHTML = `<div class="slide-num">Page ${i + 1}</div><div class="slide-title">${s.title}</div><div class="slide-content">${s.content}</div>`;
     c.appendChild(div);
   });
 
   showScreen('preview');
 }
 
-async function downloadPPTX() {
+async function downloadPDF() {
   const d = state.lessonData;
   if (!d) return;
   const btn = document.querySelector('.download-btn');
   const original = btn.textContent;
-  btn.textContent = 'Building file…';
+  btn.textContent = 'Building PDF…';
   btn.disabled = true;
   try {
-    await buildInteractivePptx(d, { level: state.level, duration: state.duration });
+    await buildLessonPdf(d, { level: state.level, duration: state.duration });
   } catch (e) {
-    alert('Could not build the PPTX: ' + e.message);
+    alert('Could not build the PDF: ' + e.message);
   } finally {
     btn.textContent = original;
     btn.disabled = false;

@@ -138,7 +138,7 @@ module.exports = async (req, res) => {
     40: { vocab: 8, questions: 5 },
   }[safeDuration];
 
-  const prompt = `You are an expert ESL curriculum designer. Generate a ${safeDuration}-minute INTERACTIVE lesson about "${topic}" for ${safeLevel} level English learners.${focusLine}
+  const prompt = `You are an expert ESL curriculum designer. Generate a ${safeDuration}-minute structured lesson about "${topic}" for ${safeLevel} level English learners.${focusLine}
 
 Generate exactly: ${counts.vocab} vocabulary items, 4 sentenceFrames, ${counts.questions} speakingQuestions, 4 activity templates, 3 reviewSentences. All content appropriate for ${safeLevel} ESL learners. Sentence frames and activity templates should contain a literal "___" blank.`;
 

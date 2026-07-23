@@ -1,33 +1,32 @@
-# ClassIn Interactive Lesson Builder
+# ClassIn Lesson Builder (PDF)
 
-Type a topic → get a downloadable `.pptx` with clickable menu navigation,
-click-to-reveal answers, and fade transitions, built for ESL lessons on ClassIn.
+Type a topic → get a downloadable `.pdf` with slide-style pages built for ESL
+lessons on ClassIn.
 
-## What "interactive" actually means here
+## How it works
 
-Real PPTX files can't do true drag-and-drop or fillable text boxes from a
-browser-generated file — that requires VBA macros, which we deliberately don't
-generate. What they *can* do reliably is **slide-jump hyperlinks**, and this
-app uses that in two ways:
+Each page of the PDF is designed like a presentation slide — coloured
+backgrounds, cards, large readable text. The teacher opens the PDF in ClassIn's
+document viewer and advances pages to pace the lesson. No hyperlinks, no macros,
+no compatibility concerns — just a clean document that works everywhere.
 
-- **Menu navigation** — a hub slide with buttons that jump to any section, and
-  a "🏠 Menu" button on every slide to come back.
-- **Click-to-reveal** — each warm-up/vocab/speaking prompt is actually *two*
-  slides (a "prompt" and an "answer"), linked by a button.
-- **Transitions** — pptxgenjs has no transition API, so after it generates the
-  `.pptx` we unzip it, inject a native `<p:transition>` fade on every slide's
-  XML, and re-zip.
+### Lesson structure (one page per section)
 
-**Important caveat:** this depends on ClassIn's PPT player honoring in-file
-hyperlinks and transitions when you upload a `.pptx`. Test one generated deck
-in an actual ClassIn classroom before relying on it in a live lesson.
+1. **Title** — lesson name, level, duration
+2. **Warm-Up** — question + sample answer
+3. **New Words** — vocabulary cards (words only)
+4. **New Words — In Sentences** — words + example sentences
+5. **Sentence Frames** — fill-in-the-blank patterns
+6. **Let's Talk!** — one page per speaking question + sample answer
+7. **Your Turn!** — guided activity with templates
+8. **Great Job!** — review sentences
 
 ## Project structure
 
 ```
-public/                     <- served statically (by Express locally, by Vercel in prod)
+public/                     <- served statically
   index.html
-  lib/buildInteractivePptx.js
+  lib/buildLessonPdf.js     <- builds the PDF in-browser with jsPDF
 api/
   generate-lesson.js        <- Vercel Serverless Function: POST /api/generate-lesson
 server.js                   <- Express server, LOCAL DEV ONLY (npm start)
@@ -43,26 +42,19 @@ route, so it works the same way in both places:
   and Vercel serves everything in `public/` as static files automatically —
   no build step needed.
 
-The frontend (`public/index.html`) doesn't know or care which one is
-answering; it just calls `fetch('/api/generate-lesson', ...)`.
-
 ## Deploy to Vercel
 
-1. Push this project to a GitHub repo (or use the Vercel CLI directly from
-   this folder).
+1. Push this project to a GitHub repo (or use the Vercel CLI directly).
 2. In the [Vercel dashboard](https://vercel.com/new), import the repo.
    Framework preset: **Other** (no build command / output directory needed —
-   leave those blank, Vercel auto-detects `public/` + `api/`).
-3. Before or after the first deploy, go to
-   **Project Settings → Environment Variables** and add:
+   leave those blank).
+3. Add environment variables in **Project Settings → Environment Variables**:
    - `GEMINI_API_KEY` — your key from https://aistudio.google.com/apikey
    - `GEMINI_MODEL` — optional, defaults to `gemini-3.1-flash-lite`
-   - `GEMINI_FALLBACK_MODELS` — optional (defaults to `gemini-3.5-flash-lite`);
-     one fallback is tried if the primary returns high-demand / 429 / 503
-4. Deploy (or redeploy, if you added the env vars after the first deploy —
-   env var changes require a redeploy to take effect).
+   - `GEMINI_FALLBACK_MODELS` — optional (defaults to `gemini-3.5-flash-lite`)
+4. Deploy (env var changes require a redeploy).
 
-Or via CLI from this folder:
+Or via CLI:
 
 ```bash
 npm i -g vercel
@@ -80,23 +72,13 @@ cp .env.example .env
 npm start
 ```
 
-Then open http://localhost:3000. You can also run `vercel dev` instead, which
-uses `api/generate-lesson.js` + `public/` the same way production does — pull
-env vars first with `vercel env pull .env.local`.
-
-## Extending it
-
-- **Add a section**: add a slide-index to `planSlides()` in
-  `public/lib/buildInteractivePptx.js`, build the slide(s), and add a menu
-  button pointing at it.
-- **Change the transition**: swap `<p:fade/>` for `<p:push dir="l"/>`,
-  `<p:wipe/>`, `<p:cut/>`, etc. — standard OOXML transition elements.
+Then open http://localhost:3000.
 
 ## Notes
 
-- Default model is `gemini-3.1-flash-lite`, set via `GEMINI_MODEL`. Check
-  https://ai.google.dev/gemini-api/docs/models for the current lineup. If a
-  model is capacity-throttled, the API automatically tries one model from
+- Default model is `gemini-3.1-flash-lite`, set via `GEMINI_MODEL`. If a
+  model is capacity-throttled, the API automatically tries one fallback from
   `GEMINI_FALLBACK_MODELS`.
-- Uses `pptxgenjs@3.12.0` and `jszip@3.10.1` from cdnjs — no build step needed
-  for the frontend either.
+- Uses `jsPDF 2.5.2` from cdnjs — no build step needed for the frontend.
+- Emoji from the Gemini response are stripped in the PDF (jsPDF's built-in
+  helvetica font doesn't render them), but the lesson content is unchanged.
