@@ -56,7 +56,7 @@ answering; it just calls `fetch('/api/generate-lesson', ...)`.
 3. Before or after the first deploy, go to
    **Project Settings → Environment Variables** and add:
    - `GEMINI_API_KEY` — your key from https://aistudio.google.com/apikey
-   - `GEMINI_MODEL` — optional, defaults to `gemini-2.5-flash`
+   - `GEMINI_MODEL` — optional, defaults to `gemini-3.6-flash`
 4. Deploy (or redeploy, if you added the env vars after the first deploy —
    env var changes require a redeploy to take effect).
 
@@ -92,7 +92,7 @@ env vars first with `vercel env pull .env.local`.
 
 ## Notes
 
-- Default model is `gemini-2.5-flash`, set via `GEMINI_MODEL`. Check
+- Default model is `gemini-3.6-flash`, set via `GEMINI_MODEL`. Check
   https://ai.google.dev/gemini-api/docs/models for the current lineup.
 - Uses `pptxgenjs@3.12.0` and `jszip@3.10.1` from cdnjs — no build step needed
   for the frontend either.
