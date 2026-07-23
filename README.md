@@ -17,9 +17,12 @@ no compatibility concerns — just a clean document that works everywhere.
 3. **New Words** — vocabulary cards (words only)
 4. **New Words — In Sentences** — words + example sentences
 5. **Sentence Frames** — fill-in-the-blank patterns
-6. **Let's Talk!** — one page per speaking question + sample answer
-7. **Your Turn!** — guided activity with templates
-8. **Great Job!** — review sentences
+6. **Story (2 pages)** — illustrated reading passage with scene visuals
+7. **Reading Comprehension** — 3 questions + sample answers
+8. **Your Ideas!** — 2 open-ended creative questions about the story
+9. **Let's Talk!** — one page per speaking question + sample answer
+10. **Your Turn!** — guided activity with templates
+11. **Great Job!** — review sentences
 
 ## Project structure
 

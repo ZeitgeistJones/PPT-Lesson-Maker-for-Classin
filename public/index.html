@@ -58,7 +58,8 @@
     </div>
     <div class="info">
       Type a topic and get a downloadable <strong>.pdf</strong> lesson with slide-style pages —
-      title, warm-up, vocabulary, sentence frames, speaking questions, activity, and wrap-up.
+      title, warm-up, vocabulary, sentence frames, a <strong>2-page illustrated story</strong>,
+      reading comprehension, creative questions, speaking, activity, and wrap-up.
       Open it in ClassIn's document viewer and advance pages to pace the lesson.
     </div>
     <div class="card">
@@ -187,20 +188,46 @@ async function generate() {
 
 function showPreview(d) {
   document.getElementById('preview-title').textContent = d.title;
-  document.getElementById('preview-meta').textContent = `${state.level} · ${state.duration} min · ${d.speakingQuestions.length + 7} pages`;
+  const storyPages = d.story?.pages?.length || 2;
+  const pageCount = (d.speakingQuestions?.length || 0) + 9 + storyPages;
+  document.getElementById('preview-meta').textContent = `${state.level} · ${state.duration} min · ~${pageCount} pages`;
 
   const c = document.getElementById('slides-preview');
   c.innerHTML = '';
-  [
+  const story = d.story || {};
+  const sections = [
     { title: d.title, content: 'Title page', cls: 'blue' },
     { title: 'Warm-Up', content: `"${d.warmUp.question}" — Sample: ${d.warmUp.sampleAnswer}`, cls: 'coral' },
     { title: 'New Words', content: d.vocabulary.map(v => `${v.emoji} <em>${v.word}</em>`).join(' &nbsp; '), cls: 'purple' },
     { title: 'New Words — In Sentences', content: d.vocabulary.map(v => `<em>${v.word}</em>: ${v.sentence}`).join('<br>'), cls: 'purple' },
     { title: 'Sentence Frames', content: d.sentenceFrames.map(f => `<em>${f}</em>`).join('<br>'), cls: 'yellow' },
+  ];
+
+  (story.pages || []).slice(0, 2).forEach((p, i) => {
+    sections.push({
+      title: i === 0 ? `Story: ${story.title || 'Let\'s Read!'}` : `Story (cont.): ${p.heading || ''}`,
+      content: `<em>${p.visualTheme || 'scene'}</em> — ${p.visualCaption || ''}<br>${p.text || ''}`,
+      cls: 'coral',
+    });
+  });
+
+  sections.push(
+    {
+      title: 'Reading Comprehension',
+      content: (story.comprehensionQuestions || []).map((q, i) => `${i + 1}. ${q.question}`).join('<br>'),
+      cls: 'blue',
+    },
+    {
+      title: 'Your Ideas!',
+      content: (story.creativeQuestions || []).map((q, i) => `${i + 1}. ${q}`).join('<br>'),
+      cls: 'green',
+    },
     { title: "Let's Talk!", content: d.speakingQuestions.map((q, i) => `${i + 1}. ${q.question}`).join('<br>'), cls: 'green' },
     { title: d.activity.title, content: `${d.activity.prompt}<br>${d.activity.templates.map(t => `<em>${t}</em>`).join('<br>')}`, cls: 'coral' },
     { title: 'Great Job!', content: 'Review: ' + d.reviewSentences.map(s => `<em>${s}</em>`).join(' · '), cls: 'blue' },
-  ].forEach((s, i) => {
+  );
+
+  sections.forEach((s, i) => {
     const div = document.createElement('div');
     div.className = `slide-preview ${s.cls}`;
     div.innerHTML = `<div class="slide-num">Page ${i + 1}</div><div class="slide-title">${s.title}</div><div class="slide-content">${s.content}</div>`;

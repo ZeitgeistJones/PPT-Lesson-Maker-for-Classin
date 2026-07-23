@@ -42,6 +42,44 @@ const LESSON_SCHEMA = {
       },
     },
     sentenceFrames: { type: 'array', items: { type: 'string' } },
+    story: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        pages: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              heading: { type: 'string' },
+              text: { type: 'string' },
+              visualTheme: {
+                type: 'string',
+                description: 'One of: park, school, home, city, beach, nature, kitchen, sports',
+              },
+              visualCaption: { type: 'string' },
+            },
+            required: ['heading', 'text', 'visualTheme', 'visualCaption'],
+          },
+        },
+        comprehensionQuestions: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              question: { type: 'string' },
+              sampleAnswer: { type: 'string' },
+            },
+            required: ['question', 'sampleAnswer'],
+          },
+        },
+        creativeQuestions: {
+          type: 'array',
+          items: { type: 'string' },
+        },
+      },
+      required: ['title', 'pages', 'comprehensionQuestions', 'creativeQuestions'],
+    },
     speakingQuestions: {
       type: 'array',
       items: {
@@ -64,7 +102,7 @@ const LESSON_SCHEMA = {
     },
     reviewSentences: { type: 'array', items: { type: 'string' } },
   },
-  required: ['title', 'warmUp', 'vocabulary', 'sentenceFrames', 'speakingQuestions', 'activity', 'reviewSentences'],
+  required: ['title', 'warmUp', 'vocabulary', 'sentenceFrames', 'story', 'speakingQuestions', 'activity', 'reviewSentences'],
 };
 
 function modelCandidates() {
@@ -140,7 +178,15 @@ module.exports = async (req, res) => {
 
   const prompt = `You are an expert ESL curriculum designer. Generate a ${safeDuration}-minute structured lesson about "${topic}" for ${safeLevel} level English learners.${focusLine}
 
-Generate exactly: ${counts.vocab} vocabulary items, 4 sentenceFrames, ${counts.questions} speakingQuestions, 4 activity templates, 3 reviewSentences. All content appropriate for ${safeLevel} ESL learners. Sentence frames and activity templates should contain a literal "___" blank.`;
+Generate exactly: ${counts.vocab} vocabulary items, 4 sentenceFrames, ${counts.questions} speakingQuestions, 4 activity templates, 3 reviewSentences.
+
+Also generate a short illustrated story tied to the topic:
+- story.title: a catchy story title
+- story.pages: EXACTLY 2 pages. Each page needs heading, text (2–4 short paragraphs suitable for ${safeLevel} learners; use some lesson vocabulary), visualTheme (exactly one of: park, school, home, city, beach, nature, kitchen, sports), and visualCaption (short scene label)
+- story.comprehensionQuestions: EXACTLY 3 reading comprehension questions about the story, each with a sampleAnswer
+- story.creativeQuestions: EXACTLY 2 open-ended creative questions related to the story (imagining, personal connection, or continuing the story) — no sample answers
+
+All content appropriate for ${safeLevel} ESL learners. Sentence frames and activity templates should contain a literal "___" blank.`;
 
   try {
     const models = modelCandidates();
